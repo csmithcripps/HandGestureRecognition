@@ -1,16 +1,20 @@
+import pickle
 import cv2
 import numpy as np
 import mediapipe as mp
 from mediapipe.python.solutions import hands as mp_hands
 from collections import deque
+from scipy.spatial import distance
 
 import handRepresentation
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
-# Set up a queue for the location of the hand Base
+gestureThreshold = open('GestureDictionary.pickle', 'rb') as f:
+    GestureDictionary = pickle.load(f)
 
+fistJoints = list(GestureDictionary['Closed Fist'].values())
 # For webcam input:
 cap = cv2.VideoCapture(0)
 with mp_hands.Hands(    
@@ -35,14 +39,19 @@ with mp_hands.Hands(
     image.flags.writeable = True
     # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     if results.multi_hand_landmarks:
+        print('Found Hand')
         # print(HandAveCoordinates)
-      hand0 = handRepresentation.hand(results.multi_hand_landmarks[0],
+        hand0 = handRepresentation.hand(results.multi_hand_landmarks[0],
                                       results.multi_handedness[0])
-      print('\n\n\n\n\n\n\n\n\n\n\n\n')
-      print(hand0.JointAngles)
-      for hand_landmarks in results.multi_hand_landmarks:
-        mp_drawing.draw_landmarks(
-            image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+        
+        handJoints = list(hand0.JointAngles.values())
+        distToFist = distance.euclidean(fistJoints,handJoints)
+        if distToFist < gestureThreshold:
+            print("Fist")
+
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(
+                image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
     cv2.imshow('MediaPipe Hands', image)
     # break
     if cv2.waitKey(1) & 0xFF == 27:
